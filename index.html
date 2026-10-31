@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>rizzo-pii — live demo</title>
+<style>
+  :root { --v:#7c3aed; --v2:#ede9fe; --bg:#faf9fc; --card:#fff; --ink:#1f1633; --mute:#6b6480; --line:#e7e3ef; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { text-align:center; padding:28px 16px 8px; }
+  header h1 { margin:0; font-size:2rem; letter-spacing:-.02em; }
+  header .sub { margin:.4em auto 0; max-width:760px; color:var(--mute); font-size:1.02rem; }
+  header .credit { margin:.6em auto 0; font-size:.9rem; color:var(--mute); }
+  a { color:var(--v); }
+  .wrap { max-width:1220px; margin:0 auto; padding:8px 16px 40px; }
+  .status { margin:10px auto 16px; max-width:760px; background:var(--v2); border-radius:10px; padding:10px 14px; font-size:.93rem; }
+  .status.ok { background:#dcfce7; }
+  .status.err { background:#fee2e2; }
+  .bar { height:6px; background:#ddd6fe; border-radius:4px; margin-top:6px; overflow:hidden; }
+  .bar > div { height:100%; width:0; background:var(--v); transition:width .2s; }
+  .tabs { display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+  .tab { padding:10px 16px; border:none; background:none; font-size:1rem; cursor:pointer; color:var(--mute); border-bottom:3px solid transparent; }
+  .tab.on { color:var(--ink); border-color:var(--v); font-weight:600; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:900px){ .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .card h3 { margin:0 0 8px; font-size:.95rem; color:var(--mute); font-weight:600; }
+  textarea { width:100%; border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; font-size:.93rem; line-height:1.45; resize:vertical; background:#fff; color:var(--ink); }
+  .btn { background:var(--v); color:#fff; border:none; border-radius:8px; padding:10px 18px; font-size:1rem; font-weight:600; cursor:pointer; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .btn.ghost { background:#fff; color:var(--v); border:1px solid #c4b5fd; font-weight:500; padding:7px 12px; font-size:.88rem; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .ex { font-size:.85rem; color:var(--mute); }
+  .hl { white-space:pre-wrap; line-height:2; font-size:.93rem; min-height:120px; }
+  .ent { border-radius:5px; padding:1px 4px; margin:0 1px; }
+  .ent small { font-size:.62rem; font-weight:700; margin-left:4px; opacity:.75; letter-spacing:.02em; }
+  .ent.v { outline:1.5px solid #16a34a; }
+  .stats { font-size:.88rem; color:var(--mute); margin:8px 0; }
+  .stats code { background:var(--v2); border-radius:4px; padding:0 4px; color:var(--ink); }
+  details { margin-top:10px; }
+  summary { cursor:pointer; color:var(--mute); font-size:.9rem; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:8px; font-size:.82rem; }
+  pre { background:#f6f4fa; border-radius:8px; padding:10px; font-size:.82rem; overflow:auto; max-height:260px; }
+  footer { text-align:center; color:var(--mute); font-size:.85rem; margin-top:26px; line-height:1.5; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🦔 rizzo-pii — live demo</h1>
+  <p class="sub">Local, <b>reversible</b> PII anonymization for <b>Italian legal text</b>: 22 PII types incl. codice fiscale, P.IVA, IBAN and dati catastali. Runs <b>entirely in your browser</b>, so your text never leaves this tab.</p>
+  <p class="credit">Code: <a href="https://github.com/Rizzo-AI-Academy/rizzo-pii" target="_blank" rel="noopener">Rizzo-AI-Academy/rizzo-pii</a> · Model: <a href="https://huggingface.co/rizzoaiacademy/rizzo-pii-0.3B" target="_blank" rel="noopener">rizzoaiacademy/rizzo-pii-0.3B</a> · MIT License · © Rizzo AI Academy</p>
+</header>
+<div class="wrap">
+  <div id="status" class="status">Loading the model in your browser (≈190 MB, cached after the first visit)…<div class="bar"><div id="prog"></div></div></div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="p1">1 · Anonymize</button>
+    <button class="tab" data-t="p2">2 · Restore the LLM's answer</button>
+  </div>
+
+  <section id="p1">
+    <div class="grid">
+      <div class="card">
+        <h3>Italian text (contract, ruling, email…)</h3>
+        <textarea id="inp" rows="14" placeholder="Incolla qui il documento…"></textarea>
+        <div class="row"><span class="ex">Examples (synthetic data, valid checksums):</span>
+          <button class="btn ghost" data-ex="0">Lease contract</button>
+          <button class="btn ghost" data-ex="1">Court order</button>
+          <button class="btn ghost" data-ex="2">Insurance email</button>
+        </div>
+        <details><summary>Keep some types in clear (optional)</summary><div class="tags" id="tags"></div></details>
+        <div class="row"><button class="btn" id="go" disabled>🔒 Anonymize</button><span id="t" class="ex"></span></div>
+      </div>
+      <div class="card">
+        <h3>Detected PII</h3>
+        <div id="hl" class="hl ex">Results appear here. Green outline = checksum-verified (IBAN / CF / P.IVA / card).</div>
+        <div id="stats" class="stats"></div>
+        <h3 style="margin-top:12px">Anonymized text → safe to paste into ChatGPT / Claude / Gemini</h3>
+        <textarea id="anon" rows="7" readonly></textarea>
+        <div class="row"><button class="btn ghost" id="copy">📋 Copy</button><button class="btn ghost" id="dl">⬇ Download dictionary</button><button class="btn ghost" id="to2">Next: restore →</button></div>
+        <details><summary>Reversible dictionary (placeholder → real value, stays with you)</summary><pre id="map">{}</pre></details>
+      </div>
+    </div>
+  </section>
+
+  <section id="p2" class="hidden">
+    <div class="grid">
+      <div class="card">
+        <h3>LLM answer with placeholders</h3>
+        <textarea id="rin" rows="11"></textarea>
+        <h3 style="margin-top:12px">Dictionary (JSON, filled in from step 1)</h3>
+        <textarea id="rmap" rows="7" spellcheck="false"></textarea>
+        <div class="row"><button class="btn" id="rev" disabled>🔓 Restore real values</button></div>
+      </div>
+      <div class="card">
+        <h3>Restored text</h3>
+        <textarea id="rout" rows="20" readonly></textarea>
+        <div class="row"><button class="btn ghost" id="rcopy">📋 Copy</button></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Unofficial community demo. Detection = the rizzo-pii model (int8 ONNX build, run with onnxruntime-web) + the project's own regex/checksum net (<code>detectors.py</code>, unmodified, run with Pyodide).<br/>
+    For real documents use the project's desktop app or Docker image. Demo built by <a href="https://r69shabh.me" target="_blank" rel="noopener">Rishabh Gusain</a>.
+  </footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
